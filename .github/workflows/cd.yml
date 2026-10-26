@@ -22,8 +22,6 @@ jobs:
     outputs:
       ui: ${{ steps.changes.outputs.ui }}
       api: ${{ steps.changes.outputs.api }}
-      formatter: ${{ steps.changes.outputs.formatter }}
-      reverse-proxy: ${{ steps.changes.outputs.reverse-proxy }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,10 +43,6 @@ jobs:
             - 'ui/**'
             api:
               - 'api/**'
-            formatter:
-              - 'formatter/**'
-            reverse-proxy:
-              - 'reverse-proxy/**'
           list-files: json
           token: ${{ github.token }}
 
@@ -130,42 +124,12 @@ jobs:
             ./api/build/libs
             !./api/build/libs/*-plain.jar
 
-  formatter-test:
-    name: '[Formatter] Test'
-    runs-on: ubuntu-latest
-    needs:
-      - files-changed
-    if: needs.files-changed.outputs.formatter == 'true'
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Deno 2.1
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: '2.1.x'
-
-      - name: Install dependencies
-        run: deno install
-        working-directory: ./formatter
-
-      - name: Check
-        run: deno task check
-        working-directory: ./formatter
-
-      - name: Test
-        run: deno test
-        working-directory: ./formatter
-
   ui-build-docker:
     name: '[UI] Build Docker'
     runs-on: ubuntu-latest
     needs:
       - ui-build-and-test
       - api-build-and-test
-      - formatter-test
     if: |
       always() &&
       github.event_name == 'push' &&
@@ -215,7 +179,6 @@ jobs:
     needs:
       - ui-build-and-test
       - api-build-and-test
-      - formatter-test
     if: |
       always() &&
       github.event_name == 'push' &&
@@ -259,95 +222,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  formatter-build-docker:
-    name: '[Formatter] Build Docker'
-    runs-on: ubuntu-latest
-    needs:
-      - ui-build-and-test
-      - api-build-and-test
-      - formatter-test
-    if: |
-      always() &&
-      github.event_name == 'push' &&
-      needs.formatter-test.result == 'success' &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log into registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/zemcikerik/schema-lens/formatter
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: ./formatter
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  reverse-proxy-build-docker:
-    name: '[Reverse Proxy] Build Docker'
-    runs-on: ubuntu-latest
-    needs:
-      - files-changed
-      - ui-build-and-test
-      - api-build-and-test
-      - formatter-test
-    if: |
-      always() &&
-      github.event_name == 'push' &&
-      needs.files-changed.outputs.reverse-proxy == 'true' &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log into registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/zemcikerik/schema-lens/reverse-proxy
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: ./reverse-proxy
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
   deploy:
     name: 'Deploy'
     runs-on: ubuntu-latest
@@ -355,16 +229,12 @@ jobs:
     needs:
       - ui-build-docker
       - api-build-docker
-      - formatter-build-docker
-      - reverse-proxy-build-docker
     if: |
       false &&
       github.event_name == 'push' &&
       (
         needs.ui-build-docker.result == 'success' ||
-        needs.api-build-docker.result == 'success' ||
-        needs.formatter-build-docker.result == 'success' ||
-        needs.reverse-proxy-build-docker.result == 'success'
+        needs.api-build-docker.result == 'success'
       ) &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')

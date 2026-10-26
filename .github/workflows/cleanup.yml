@@ -23,5 +23,5 @@ jobs:
         with:
           delete-untagged: true
           older-than: 1 week
-          packages: schema-lens/api,schema-lens/ui,schema-lens/reverse-proxy,schema-lens/formatter
+          packages: schema-lens/api,schema-lens/ui
           dry-run: ${{ github.event.inputs.dry_run == 'true' }}
