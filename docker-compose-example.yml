@@ -1,0 +1,148 @@
+services:
+  api:
+    image: ghcr.io/schema-lens/api:latest
+    restart: unless-stopped
+    user: '1000:1000'
+    read_only: true
+    stop_grace_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+      formatter:
+        condition: service_healthy
+    volumes:
+      - ${STORAGE_PROFILE_PICTURE_FOLDER_PATH}:/app/profile-pictures:z
+    environment:
+      - spring.datasource.url=jdbc:oracle:thin:@db:1521/FREEPDB1
+      - spring.datasource.username=${DB_APP_USER}
+      - spring.datasource.password=${DB_APP_PASSWORD}
+      - storage.profile-picture.folder-path=/app/profile-pictures
+      - project.password-encryption-key=${PROJECT_PASSWORD_ENCRYPTION_KEY}
+      - jwt.signing-key=${JWT_SIGNING_KEY}
+      - oracle.format.api-base-url=http://formatter:8000
+    networks:
+      - db
+      - formatter
+      - reverse-proxy
+    pids_limit: 256
+    cpus: 2
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m,mode=0700,uid=1000,gid=1000
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  ui:
+    image: ghcr.io/schema-lens/ui:latest
+    restart: unless-stopped
+    user: '101:101'
+    read_only: true
+    stop_grace_period: 30s
+    networks:
+      - reverse-proxy
+    volumes:
+      - ${STORAGE_PROFILE_PICTURE_FOLDER_PATH}:/usr/share/nginx/html/static/profile-pictures:ro,z
+    pids_limit: 64
+    cpus: 1.0
+    mem_limit: 512m
+    memswap_limit: 512m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=0700,uid=101,gid=101
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  formatter:
+    image: ghcr.io/schema-lens/formatter:latest
+    restart: unless-stopped
+    user: '1000:1000'
+    read_only: true
+    stop_grace_period: 30s
+    networks:
+      - formatter
+    pids_limit: 64
+    cpus: 1.0
+    mem_limit: 512m
+    memswap_limit: 512m
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  proxy:
+    image: ghcr.io/schema-lens/proxy:latest
+    restart: unless-stopped
+    user: '101:101'
+    read_only: true
+    stop_grace_period: 30s
+    depends_on:
+      api:
+        condition: service_healthy
+      ui:
+        condition: service_healthy
+    ports:
+      - '80:8080'
+    networks:
+      - reverse-proxy
+    pids_limit: 64
+    cpus: 1.0
+    mem_limit: 512m
+    memswap_limit: 512m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=0700,uid=101,gid=101
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  db:
+    image: gvenzl/oracle-free:slim
+    restart: unless-stopped
+    volumes:
+      - ${DB_DATA_FOLDER_PATH}:/opt/oracle/oradata
+      - ${DB_BACKUP_FOLDER_PATH}:/opt/oracle/backups
+      - ./db/init:/container-entrypoint-initdb.d:ro
+    environment:
+      ORACLE_PASSWORD: ${DB_ROOT_PASSWORD}
+      APP_USER: ${DB_APP_USER}
+      APP_USER_PASSWORD: ${DB_APP_PASSWORD}
+      TZ: UTC
+    networks:
+      - db
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+      start_interval: 5s
+
+networks:
+  db:
+  formatter:
+  reverse-proxy:
