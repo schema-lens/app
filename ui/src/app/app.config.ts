@@ -1,7 +1,7 @@
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
 import { appRoutes } from './app.routes';
-import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { LOCAL_STORAGE } from './core/persistence/local-storage.token';
 import { apiInterceptor } from './core/interceptors/api.interceptor';
 import { MAT_TOOLTIP_DEFAULT_OPTIONS } from '@angular/material/tooltip';
@@ -19,7 +19,7 @@ export const appConfig: ApplicationConfig = {
       withComponentInputBinding(),
       withRouterConfig({ paramsInheritanceStrategy: 'always' }),
     ),
-    provideHttpClient(withXhr(), 
+    provideHttpClient(
       withInterceptors([apiInterceptor, jwtInterceptor, unauthorizedInterceptor]),
     ),
     { provide: LOCAL_STORAGE, useFactory: () => window.localStorage },

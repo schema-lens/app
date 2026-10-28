@@ -1,6 +1,6 @@
 @if (currentObject(); as o) {
   <app-layout-header-and-content
-    [title]="(config().titleKey | translate: $safeNavigationMigration(config().titleParamsResolver?.(o)))()"
+    [title]="(config().titleKey | translate: config().titleParamsResolver?.(o))()"
     [includeSpacing]="error()"
   >
     @if (error()) {

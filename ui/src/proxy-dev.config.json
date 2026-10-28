@@ -1,6 +1,6 @@
 {
   "/api": {
-    "target": "https://dev.schema-lens.com",
+    "target": "https://schema-lens.zemco.dev",
     "secure": true,
     "changeOrigin": true
   }

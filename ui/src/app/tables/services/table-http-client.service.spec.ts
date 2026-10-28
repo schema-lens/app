@@ -1,7 +1,7 @@
 import { TableHttpClientService } from './table-http-client.service';
 import { MockBuilder, MockRender, ngMocks } from 'ng-mocks';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient, withXhr } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
 
 describe('TableHttpClientService', () => {
@@ -10,7 +10,7 @@ describe('TableHttpClientService', () => {
   ngMocks.faster();
 
   beforeAll(() => MockBuilder(TableHttpClientService)
-    .keep(provideHttpClient(withXhr()))
+    .keep(provideHttpClient())
     .keep(provideHttpClientTesting()));
 
   beforeEach(() => {

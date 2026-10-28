@@ -1,5 +1,5 @@
 import { apiInterceptor } from './api.interceptor';
-import { HttpClient, provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { MockBuilder, MockRender, ngMocks } from 'ng-mocks';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { lastValueFrom } from 'rxjs';
@@ -10,7 +10,7 @@ describe('apiInterceptor', () => {
   ngMocks.faster();
 
   beforeAll(() => MockBuilder()
-    .keep(provideHttpClient(withXhr(), 
+    .keep(provideHttpClient(
       withInterceptors([apiInterceptor]),
     ))
     .keep(provideHttpClientTesting()));
