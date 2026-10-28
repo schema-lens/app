@@ -70,12 +70,6 @@
         "signal": true
       }
     },
-    "extract-i18n": {
-      "executor": "@angular-devkit/build-angular:extract-i18n",
-      "options": {
-        "buildTarget": "schema-lens:build"
-      }
-    },
     "lint": {
       "inputs": [
         "default",
@@ -104,16 +98,6 @@
           "ci": true,
           "coverage": true
         }
-      }
-    },
-    "serve-static": {
-      "continuous": true,
-      "executor": "@nx/web:file-server",
-      "options": {
-        "buildTarget": "test:build",
-        "port": 4200,
-        "staticFilePath": "dist/test/browser",
-        "spa": true
       }
     }
   }
