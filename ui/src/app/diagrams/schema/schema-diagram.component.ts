@@ -18,6 +18,7 @@ import { SchemaDiagramNodeComponent } from './node/schema-diagram-node.component
 import { SchemaDiagramNodeModule } from './node/schema-diagram-node.module';
 import { NoMultiSelectModule } from '../util/no-multi-select.module';
 import { KeepSelectionOnReclickModule } from '../util/keep-selection-on-reclick.module';
+import { ReclickConnectModuleFactory } from './reclick-connect.module';
 import { EMPTY, Observable, switchMap } from 'rxjs';
 import {
   AddEdgePatch,
@@ -88,7 +89,7 @@ export class SchemaDiagramComponent implements AfterViewInit {
     AngularComponentShapeRendererFactory.create({ node: SchemaDiagramNodeComponent }),
     AngularSelectionSupportModuleFactory.create({
       selectionChange: (oldSelection, newSelection) => {
-        if (this.connectMode()) {
+        if (this.connectMode() && newSelection.length > 0) {
           this.handleConnectModeSelection(oldSelection, newSelection);
         } else {
           this.updateSelectionInfo(newSelection);
@@ -102,6 +103,10 @@ export class SchemaDiagramComponent implements AfterViewInit {
     NoMultiSelectModule,
     KeepSelectionOnReclickModule,
     SnappingModule,
+    ReclickConnectModuleFactory.create(
+      () => this.connectMode(),
+      (element) => this.handleConnectModeSelection([element], [element], true),
+    ),
   ];
 
   allModules = computed(() => [...this.MODULES, ...this.additionalModules()]);
@@ -322,11 +327,15 @@ export class SchemaDiagramComponent implements AfterViewInit {
     this.nodes = {};
   }
 
-  private handleConnectModeSelection(oldSelection: ElementLike[], newSelection: ElementLike[]): void {
+  private handleConnectModeSelection(
+    oldSelection: ElementLike[],
+    newSelection: ElementLike[],
+    allowSameNode = false,
+  ): void {
     const oldNode = oldSelection.length === 1 && isNodeElement(oldSelection[0]) ? oldSelection[0] : null;
     const newNode = newSelection.length === 1 && isNodeElement(newSelection[0]) ? newSelection[0] : null;
 
-    if (oldNode && newNode && oldNode !== newNode) {
+    if (oldNode && newNode && (oldNode !== newNode || allowSameNode)) {
       const fromNode = this.nodes[+oldNode.id.substring('node_'.length)]?.node;
       const toNode = this.nodes[+newNode.id.substring('node_'.length)]?.node;
 
