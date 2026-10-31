@@ -25,6 +25,7 @@ interface AdminNavEntry {
 export class AdminNavComponent {
   readonly ENTRIES: AdminNavEntry[] = [
     { labelKey: 'HELP.FAQ_LABEL', routerLink: ['/admin', 'faq'] },
+    { labelKey: 'ADMIN.DATA_TYPES.LABEL', routerLink: ['/admin', 'default-data-types'] },
     { labelKey: 'ADMIN.BACKUP.LABEL', routerLink: ['/admin', 'backup'] },
   ];
 }

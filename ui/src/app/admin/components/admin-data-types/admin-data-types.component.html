@@ -1,0 +1,24 @@
+<app-layout-header-and-content [title]="('ADMIN.DATA_TYPES.LABEL' | translate)()">
+  <button ngProjectAs="header-action" mat-flat-button [disabled]="loading() || !!dataTypesResource.error()" (click)="create()">
+    <mat-icon appIconEmphasis="high">add</mat-icon>
+    {{ ('ADMIN.DATA_TYPES.ADD_LABEL' | translate)() }}
+  </button>
+
+  @if (loading()) {
+    <app-progress-spinner [center]="true" />
+  } @else if (dataTypesResource.error()) {
+    <app-alert class="d-block mt-1" type="error">{{ ('GENERIC.ERROR_LABEL' | translate)() }}</app-alert>
+  } @else {
+    @if (resultChange() === true) {
+      <app-alert class="d-block mt-1 mb-1" type="info">{{ ('GENERIC.SUCCESS_LABEL' | translate)() }}</app-alert>
+    } @else if (resultChange() === false) {
+      <app-alert class="d-block mt-1 mb-1" type="error">{{ ('GENERIC.ERROR_LABEL' | translate)() }}</app-alert>
+    }
+
+    @if (dataTypesResource.value().length > 0) {
+      <app-admin-data-type-table [dataTypes]="dataTypesResource.value()" (edit)="update($event)" (delete)="delete($event)" />
+    } @else {
+      <app-alert class="d-block mt-1" type="info">{{ ('ADMIN.DATA_TYPES.EMPTY_LABEL' | translate)() }}</app-alert>
+    }
+  }
+</app-layout-header-and-content>

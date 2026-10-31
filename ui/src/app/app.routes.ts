@@ -227,6 +227,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./admin/components/admin-faq/admin-faq.component').then(c => c.AdminFaqComponent),
       },
       {
+        path: 'default-data-types',
+        loadComponent: () => import('./admin/components/admin-data-types/admin-data-types.component').then(c => c.AdminDataTypesComponent),
+      },
+      {
         path: 'backup',
         loadComponent: () => import('./admin/components/admin-backup/admin-backup.component').then(c => c.AdminBackupComponent),
       },
