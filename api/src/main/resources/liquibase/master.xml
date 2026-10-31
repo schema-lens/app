@@ -1487,4 +1487,133 @@
                              onDelete="CASCADE"
                              onUpdate="CASCADE" />
   </changeSet>
+
+  <changeSet id="2026-10-31T1400-data-model-default-data-type"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createTable tableName="data_model_default_data_type">
+      <column name="type_id"
+              type="BIGINT"
+              autoIncrement="true">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_default_data_type" />
+      </column>
+
+      <column name="name"
+              type="VARCHAR(40)">
+        <constraints nullable="false" />
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1405-data-model-default-data-type-parameter"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createTable tableName="data_model_default_data_type_parameter">
+      <column name="type_id"
+              type="BIGINT">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_default_data_type_parameter" />
+      </column>
+
+      <column name="name"
+              type="VARCHAR(38)">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_default_data_type_parameter" />
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1410-data-model-default-data-type-oracle"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createTable tableName="data_model_default_data_type_oracle">
+      <column name="type_id"
+              type="BIGINT">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_default_data_type_oracle" />
+      </column>
+
+      <column name="physical"
+              type="VARCHAR2(38)">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="check_constraint"
+              type="CLOB" />
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1415-data-model-default-data-type-name-index"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createIndex tableName="data_model_default_data_type"
+                 indexName="uc_data_model_default_data_type_name_ci"
+                 unique="true">
+      <column name="UPPER(name)" computed="true" />
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1416-data-model-default-data-type-parameter-name-index"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createIndex tableName="data_model_default_data_type_parameter"
+                 indexName="uc_data_model_default_type_parameter_ci"
+                 unique="true">
+      <column name="type_id" />
+      <column name="UPPER(name)" computed="true" />
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1417-data-model-default-data-type-parameter-type-ownership"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <addForeignKeyConstraint baseTableName="data_model_default_data_type_parameter"
+                             baseColumnNames="type_id"
+                             constraintName="fk_data_model_default_type_parameter_type"
+                             referencedTableName="data_model_default_data_type"
+                             referencedColumnNames="type_id"
+                             onDelete="CASCADE"
+                             onUpdate="CASCADE" />
+  </changeSet>
+
+  <changeSet id="2026-10-31T1418-data-model-default-data-type-oracle-type-ownership"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <addForeignKeyConstraint baseTableName="data_model_default_data_type_oracle"
+                             baseColumnNames="type_id"
+                             constraintName="fk_data_model_default_type_oracle_type"
+                             referencedTableName="data_model_default_data_type"
+                             referencedColumnNames="type_id"
+                             onDelete="CASCADE"
+                             onUpdate="CASCADE" />
+  </changeSet>
+
+  <changeSet id="2026-10-31T1420-seed-data-model-default-data-types"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <sql>
+      INSERT INTO data_model_default_data_type (name) VALUES ('Boolean');
+      INSERT INTO data_model_default_data_type (name) VALUES ('Integer');
+      INSERT INTO data_model_default_data_type (name) VALUES ('Decimal');
+      INSERT INTO data_model_default_data_type (name) VALUES ('String');
+      INSERT INTO data_model_default_data_type (name) VALUES ('Date');
+      INSERT INTO data_model_default_data_type (name) VALUES ('Timestamp');
+
+      INSERT INTO data_model_default_data_type_oracle (type_id, physical)
+        SELECT type_id, 'NUMBER(1)' FROM data_model_default_data_type WHERE name = 'Boolean';
+      INSERT INTO data_model_default_data_type_oracle (type_id, physical)
+        SELECT type_id, 'INTEGER' FROM data_model_default_data_type WHERE name = 'Integer';
+      INSERT INTO data_model_default_data_type_oracle (type_id, physical)
+        SELECT type_id, 'NUMBER' FROM data_model_default_data_type WHERE name = 'Decimal';
+      INSERT INTO data_model_default_data_type_oracle (type_id, physical)
+        SELECT type_id, 'VARCHAR2(255 CHAR)' FROM data_model_default_data_type WHERE name = 'String';
+      INSERT INTO data_model_default_data_type_oracle (type_id, physical)
+        SELECT type_id, 'DATE' FROM data_model_default_data_type WHERE name = 'Date';
+      INSERT INTO data_model_default_data_type_oracle (type_id, physical)
+        SELECT type_id, 'TIMESTAMP' FROM data_model_default_data_type WHERE name = 'Timestamp';
+    </sql>
+    <rollback>
+      <sql>
+        DELETE FROM data_model_default_data_type
+          WHERE name IN ('Boolean', 'Integer', 'Decimal', 'String', 'Date', 'Timestamp');
+      </sql>
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

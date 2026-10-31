@@ -1,0 +1,48 @@
+<h2 mat-dialog-title>{{ ((dataType ? 'ADMIN.DATA_TYPES.EDIT_LABEL' : 'ADMIN.DATA_TYPES.ADD_LABEL') | translate)() }}</h2>
+
+<mat-dialog-content>
+  <p>{{ ('ADMIN.DATA_TYPES.DESCRIPTION' | translate)() }}</p>
+
+  <form class="admin-data-type__form" [formGroup]="formGroup" (ngSubmit)="submit()">
+    <mat-form-field>
+      <mat-label>{{ ('DATA_MODEL.DATA_TYPE.NAME_LABEL' | translate)() }}</mat-label>
+      <input matInput required formControlName="name" />
+      @if (formGroup.controls.name.invalid) {
+        <mat-error>{{ (formGroup.controls.name.errors | formatGenericValidationErrors)() }}</mat-error>
+      }
+    </mat-form-field>
+
+    <app-string-list-field [control]="formGroup.controls.parameters"
+      [label]="('DATA_MODEL.DATA_TYPE.PARAMETERS_LABEL' | translate)()"
+      [placeholder]="('DATA_MODEL.DATA_TYPE.PARAMETER_PLACEHOLDER' | translate)()" />
+
+    <mat-form-field>
+      <mat-label>{{ ('ADMIN.DATA_TYPES.ORACLE_MAPPING_LABEL' | translate)() }}</mat-label>
+      <input matInput formControlName="physicalDataType" [matAutocomplete]="physicalTypes" />
+
+      <mat-autocomplete #physicalTypes="matAutocomplete">
+        @for (category of filteredPhysicalDataTypes(); track category.labelKey) {
+          <mat-optgroup [label]="(category.labelKey | translate)()">
+            @for (type of category.types; track type) {
+              <mat-option [value]="type">{{ type }}</mat-option>
+            }
+          </mat-optgroup>
+        }
+      </mat-autocomplete>
+
+      @if (formGroup.controls.physicalDataType.invalid) {
+        <mat-error>{{ (formGroup.controls.physicalDataType.errors | formatGenericValidationErrors)() }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>{{ ('DATA_MODEL.DATA_TYPE.CHECK_CONSTRAINT_LABEL' | translate)() }}</mat-label>
+      <textarea matInput formControlName="checkConstraint"></textarea>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button [mat-dialog-close]="null">{{ ('GENERIC.CANCEL_LABEL' | translate)() }}</button>
+  <button mat-flat-button (click)="submit()">{{ ('GENERIC.CONFIRM_LABEL' | translate)() }}</button>
+</mat-dialog-actions>
