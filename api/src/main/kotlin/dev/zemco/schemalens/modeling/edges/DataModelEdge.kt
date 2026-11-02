@@ -1,5 +1,6 @@
 package dev.zemco.schemalens.modeling.edges
 
+import dev.zemco.schemalens.modeling.fields.DataModelEdgeField
 import dev.zemco.schemalens.modeling.models.DataModel
 import dev.zemco.schemalens.modeling.nodes.DataModelNode
 import jakarta.persistence.CascadeType

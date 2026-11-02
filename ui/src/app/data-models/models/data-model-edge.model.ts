@@ -12,7 +12,9 @@ export interface DataModelEdge {
 export type DataModelEdgeType = '1:1' | '1:N';
 
 export interface DataModelEdgeField {
-  referencedFieldId: number;
+  fieldId: number;
+  sourceNodeFieldId: number;
+  parentFieldId: number;
   name: string;
   position: number;
 }

@@ -1,4 +1,4 @@
-package dev.zemco.schemalens.modeling.nodes
+package dev.zemco.schemalens.modeling.fields
 
 import jakarta.validation.constraints.NotBlank
 
@@ -33,7 +33,7 @@ data class DataModelFieldDto(
     val typeParameters: List<DataModelFieldDataTypeParameterDto> = emptyList(),
 ) {
     companion object {
-        fun from(field: DataModelField): DataModelFieldDto {
+        fun from(field: DataModelNodeField): DataModelFieldDto {
             val parameters = field.type.parameters
             val typeParameters = if (parameters.isNotEmpty()) {
                 val valuesByName = field.typeParameters.associateBy { it.id.name }
@@ -59,3 +59,17 @@ data class DataModelFieldDto(
         }
     }
 }
+
+data class DataModelEdgeFieldDto(
+    val fieldId: Long,
+    val sourceNodeFieldId: Long,
+    val parentFieldId: Long,
+    val name: String,
+    val position: Short,
+)
+
+data class DataModelEdgeFieldEditDto(
+    val fieldId: Long,
+    val name: String,
+    val position: Short,
+)

@@ -1,6 +1,6 @@
-package dev.zemco.schemalens.modeling.types
+package dev.zemco.schemalens.modeling.fields
 
-import dev.zemco.schemalens.modeling.nodes.DataModelField
+import dev.zemco.schemalens.modeling.types.DataModelDataTypeParameter
 import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.EmbeddedId
@@ -21,7 +21,7 @@ class DataModelFieldDataTypeParameter(
     @MapsId("fieldId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "field_id", nullable = false)
-    var field: DataModelField,
+    var field: DataModelNodeField,
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumns(

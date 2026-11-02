@@ -1,6 +1,13 @@
 package dev.zemco.schemalens.modeling.nodes
 
+import dev.zemco.schemalens.modeling.edges.DataModelEdge
+import dev.zemco.schemalens.modeling.edges.DataModelEdgeDto
 import dev.zemco.schemalens.modeling.edges.DataModelEdgeWriteService
+import dev.zemco.schemalens.modeling.fields.DataModelFieldDataTypeParameterService
+import dev.zemco.schemalens.modeling.fields.DataModelFieldInputDto
+import dev.zemco.schemalens.modeling.fields.DataModelNodeField
+import dev.zemco.schemalens.modeling.fields.DataModelNodeFieldEditRequestInvalidException
+import dev.zemco.schemalens.modeling.fields.validateFieldNames
 import dev.zemco.schemalens.modeling.models.DataModel
 import dev.zemco.schemalens.modeling.models.DataModelCascadeService
 import dev.zemco.schemalens.modeling.models.DataModelEdgeCascadeMutationService
@@ -21,17 +28,14 @@ class DataModelNodeServiceImpl(
     private enum class PrimaryKeyChange { NONE, TYPE_ONLY, STRUCTURAL }
 
     @Transactional
-    override fun createNode(
-        model: DataModel,
-        dto: DataModelNodeInputDto,
-    ): DataModelNodeDto {
+    override fun createNode(model: DataModel, dto: DataModelNodeDefinitionInputDto): DataModelNodeDto {
         val normalizedName = dto.name.trim()
 
         if (model.findNodeByNameOrNull(normalizedName) != null) {
             throw NodeExistsException(normalizedName)
         }
 
-        validateFieldNameUniqueness(dto.fields.map { it.name })
+        validateFieldNames(dto.fields.map { it.name })
 
         val node = nodeRepository.save(
             DataModelNode(
@@ -49,7 +53,7 @@ class DataModelNodeServiceImpl(
     }
 
     @Transactional
-    override fun updateNode(model: DataModel, nodeId: Long, dto: DataModelNodeInputDto): DataModelModificationDto {
+    override fun updateNodeDefinition(model: DataModel, nodeId: Long, dto: DataModelNodeDefinitionInputDto): DataModelModificationDto {
         val normalizedName = dto.name.trim()
         val existingNode = model.findNodeByNameOrNull(normalizedName)
 
@@ -58,18 +62,18 @@ class DataModelNodeServiceImpl(
         }
 
         val node = model.findNode(nodeId)
-        val edgeFieldNames = model.edges
-            .filter { it.toNodeId == nodeId }
-            .flatMap { it.fields }
-            .map { it.name }
+        val (toUpdate, toInsert) = dto.fields.partition { it.fieldId != null }
+        val updateById = toUpdate.associateBy { it.fieldId!! }
+        val existingFieldIds = node.fields.map { it.id!! }.toSet()
 
-        validateFieldNameUniqueness(dto.fields.map { it.name } + edgeFieldNames)
+        if (updateById.size != toUpdate.size || !existingFieldIds.containsAll(updateById.keys)) {
+            throw DataModelNodeFieldEditRequestInvalidException(nodeId)
+        }
+
+        val editedEdges = updateInheritedFields(model, nodeId, dto)
 
         node.name = normalizedName
         val primaryKeyChange = detectPrimaryKeyChange(model, node.fields, dto.fields)
-
-        val (toUpdate, toInsert) = dto.fields.partition { it.fieldId != null }
-        val updateById = toUpdate.associateBy { it.fieldId!! }
 
         node.fields.forEach { existingField ->
             val input = updateById[existingField.id]
@@ -100,40 +104,32 @@ class DataModelNodeServiceImpl(
         )
 
         val savedNode = nodeRepository.save(node)
-        val updatedNodes = listOf(DataModelNodeDto.from(savedNode))
-
-        return when (primaryKeyChange) {
-            PrimaryKeyChange.NONE -> DataModelModificationDto(updatedNodes = updatedNodes)
-
-            PrimaryKeyChange.TYPE_ONLY -> {
-                val visuallyStaleNodeIds = cascadeService.edgesInCascadeScope(savedNode)
-                    .map { it.toNodeId }
-                    .filter { it != savedNode.id }
-                    .distinct()
-
-                DataModelModificationDto(
-                    updatedNodes = updatedNodes,
-                    visuallyStaleNodeIds = visuallyStaleNodeIds,
-                )
-            }
-
-            PrimaryKeyChange.STRUCTURAL -> {
-                val updatedEdges = edgeCascadeMutationService
-                    .collectCascadeEdgesAndSync(model, savedNode)
-                    .let { edgeWriteService.persistAndMapEdges(it) }
-
-                val visuallyStaleNodeIds = updatedEdges
-                    .map { it.toNodeId }
-                    .filter { it != savedNode.id }
-                    .distinct()
-
-                DataModelModificationDto(
-                    updatedNodes = updatedNodes,
-                    updatedEdges = updatedEdges,
-                    visuallyStaleNodeIds = visuallyStaleNodeIds,
-                )
-            }
+        val cascadeEdges = when (primaryKeyChange) {
+            PrimaryKeyChange.NONE -> emptyList()
+            PrimaryKeyChange.TYPE_ONLY -> cascadeService.edgesInCascadeScope(savedNode)
+            PrimaryKeyChange.STRUCTURAL -> edgeCascadeMutationService.collectCascadeEdgesAndSync(model, savedNode)
         }
+
+        val updatedCascadeEdges = if (primaryKeyChange == PrimaryKeyChange.STRUCTURAL) {
+            edgeWriteService.persistAndMapEdges(cascadeEdges)
+        } else {
+            emptyList()
+        }
+
+        val updatedEdges = (updatedCascadeEdges + editedEdges.map { DataModelEdgeDto.from(it) })
+            .distinctBy { it.edgeId }
+
+        val cascadeNodeIds = cascadeEdges
+            .map { it.toNodeId }
+            .filter { it != savedNode.id }
+
+        val visuallyStaleNodeIds = (cascadeNodeIds + editedEdges.map { it.toNodeId }).distinct()
+
+        return DataModelModificationDto(
+            updatedNodes = listOf(DataModelNodeDto.from(savedNode)),
+            updatedEdges = updatedEdges,
+            visuallyStaleNodeIds = visuallyStaleNodeIds,
+        )
     }
 
     @Transactional
@@ -180,9 +176,39 @@ class DataModelNodeServiceImpl(
         )
     }
 
+    private fun updateInheritedFields(
+        model: DataModel,
+        nodeId: Long,
+        dto: DataModelNodeDefinitionInputDto,
+    ): List<DataModelEdge> {
+        val incomingEdges = model.edges.filter { it.toNodeId == nodeId }
+        val existingFieldsById = incomingEdges
+            .flatMap { it.fields }
+            .associateBy { it.id!! }
+        val requestedFieldsById = dto.edgeFields.associateBy { it.fieldId }
+
+        if (requestedFieldsById.size != dto.edgeFields.size ||
+            !existingFieldsById.keys.containsAll(requestedFieldsById.keys)
+        ) {
+            throw DataModelNodeFieldEditRequestInvalidException(nodeId)
+        }
+
+        val edgeFieldNames = existingFieldsById.map { (id, field) -> requestedFieldsById[id]?.name ?: field.name }
+        validateFieldNames(dto.fields.map { it.name } + edgeFieldNames)
+
+        requestedFieldsById.forEach { (id, input) ->
+            existingFieldsById.getValue(id).apply {
+                name = input.name.trim()
+                position = input.position
+            }
+        }
+
+        return incomingEdges.filter { edge -> edge.fields.any { it.id in requestedFieldsById } }
+    }
+
     private fun detectPrimaryKeyChange(
         model: DataModel,
-        existingFields: Collection<DataModelField>,
+        existingFields: Collection<DataModelNodeField>,
         requestedFields: Collection<DataModelFieldInputDto>,
     ): PrimaryKeyChange {
         val existingById = existingFields.associateBy { field -> field.id!! }
@@ -223,7 +249,7 @@ class DataModelNodeServiceImpl(
     }
 
     private fun hasRequestedTypeParameterChange(
-        existingField: DataModelField,
+        existingField: DataModelNodeField,
         requestedField: DataModelFieldInputDto,
         requestedDataType: DataModelDataType,
     ): Boolean {
@@ -237,25 +263,14 @@ class DataModelNodeServiceImpl(
         }
     }
 
-    private fun validateFieldNameUniqueness(fieldNames: List<String>) {
-        val seen = mutableSetOf<String>()
-
-        for (name in fieldNames) {
-            val normalized = name.trim().uppercase()
-            if (!seen.add(normalized)) {
-                throw FieldNameNotUniqueException(name.trim())
-            }
-        }
-    }
-
-    private fun DataModelFieldInputDto.toEntity(model: DataModel, node: DataModelNode): DataModelField {
+    private fun DataModelFieldInputDto.toEntity(model: DataModel, node: DataModelNode): DataModelNodeField {
         val dataType = model.findDataType(typeId)
 
         if (isPrimaryKey && isNullable) {
             throw IllegalArgumentException("Primary key field cannot be nullable")
         }
 
-        return DataModelField(
+        return DataModelNodeField(
             nodeId = node.id ?: 0,
             node = node,
             name = name.trim(),
@@ -267,7 +282,7 @@ class DataModelNodeServiceImpl(
         )
     }
 
-    private fun DataModelFieldInputDto.toEntityWithParameters(model: DataModel, node: DataModelNode): DataModelField =
+    private fun DataModelFieldInputDto.toEntityWithParameters(model: DataModel, node: DataModelNode): DataModelNodeField =
         toEntity(model, node).also {
             fieldDataTypeParameterService.syncParameters(
                 it, it.type, typeParameters, clearWhenAbsent = true,

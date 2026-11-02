@@ -1,5 +1,6 @@
 package dev.zemco.schemalens.modeling.edges
 
+import dev.zemco.schemalens.modeling.fields.DataModelEdgeFieldDto
 import dev.zemco.schemalens.validation.OnCreate
 import dev.zemco.schemalens.validation.OnUpdate
 import jakarta.validation.constraints.NotNull
@@ -29,7 +30,9 @@ data class DataModelEdgeDto(
                     .sortedBy { it.position }
                     .map {
                         DataModelEdgeFieldDto(
-                            referencedFieldId = it.id.referencedFieldId,
+                            fieldId = it.id!!,
+                            sourceNodeFieldId = it.sourceNodeField.id!!,
+                            parentFieldId = it.parentField.id!!,
                             name = it.name,
                             position = it.position,
                         )

@@ -1,7 +1,11 @@
 ﻿import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { DataModelFieldReorderRequest, DataModelNode, DataModelNodeSummary } from '../models/data-model-node.model';
+import {
+  DataModelNode,
+  DataModelNodeSummary,
+  DataModelNodeDefinitionUpdate,
+} from '../models/data-model-node.model';
 import { DataModelModification } from '../models/data-model.model';
 
 @Injectable({
@@ -17,18 +21,11 @@ export class DataModelNodeHttpClientService {
     });
   }
 
-  updateNode(modelId: number, node: DataModelNode): Observable<DataModelModification> {
-    return this.httpClient.put<DataModelModification>(`/model/${modelId}/node/${node.nodeId}`, node);
+  updateNodeDefinition(modelId: number, node: DataModelNodeDefinitionUpdate): Observable<DataModelModification> {
+    return this.httpClient.put<DataModelModification>(`/model/${modelId}/node/${node.nodeId}/definition`, node);
   }
 
   deleteNode(modelId: number, nodeId: number): Observable<DataModelModification> {
     return this.httpClient.delete<DataModelModification>(`/model/${modelId}/node/${nodeId}`);
-  }
-
-  reorderNodeFields(modelId: number, nodeId: number, request: DataModelFieldReorderRequest): Observable<DataModelModification> {
-    return this.httpClient.put<DataModelModification>(
-      `/model/${modelId}/node/${nodeId}/fields/reorder`,
-      request,
-    );
   }
 }

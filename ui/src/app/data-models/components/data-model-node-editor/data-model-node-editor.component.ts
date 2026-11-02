@@ -17,12 +17,11 @@ import {
   DirectFieldReference,
   EdgeFieldReference,
 } from '../data-model-node-fields-table/data-model-node-fields-table.component';
-import { DataModelField, DataModelNode } from '../../models/data-model-node.model';
+import { DataModelEdgeFieldEdit, DataModelField, DataModelNode } from '../../models/data-model-node.model';
 import { EdgeResolvedField, ResolvedField } from '../../models/resolved-field.model';
 import { DataModelEdge } from '../../models/data-model-edge.model';
-import { applyEdgeFieldModifications, EdgeFieldModification } from '../../models/edge-field-modification.model';
 import { DataModelNodeFieldResolver } from '../../services/data-model-node-field.resolver';
-import { concatMap, filter, finalize, from, map, mergeMap, Observable, of, reduce, tap } from 'rxjs';
+import { filter, finalize, Observable, tap } from 'rxjs';
 import { DataModelStore } from '../../data-model.store';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconButton } from '@angular/material/button';
@@ -32,7 +31,7 @@ import { DataModelDialogService } from '../../services/data-model-dialog.service
 import { SectionHeaderComponent } from '../../../shared/components/section-header/section-header.component';
 import { TranslatePipe } from '../../../core/translate/translate.pipe';
 import { DataModelEditor } from '../data-model-editor/data-model-editor.component';
-import { DataModelModification, mergeDataModelModification } from '../../models/data-model.model';
+import { DataModelModification } from '../../models/data-model.model';
 import { dataModelNodeNameValidators } from '../../validators/data-model-name.validators';
 import { GO_TO_EDGE_HANDLER } from '../../services/data-model-go-to-edge-handler.service';
 
@@ -74,9 +73,7 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
   });
   fields = signal<ResolvedField[]>([]);
 
-  nodeModified = false;
-  positionsChanged = false;
-  edgeFieldModifications: EdgeFieldModification[] = [];
+  private modified = false;
   pendingSaveId = signal<number | null>(null);
 
   constructor() {
@@ -97,9 +94,7 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
         name: node.name,
       });
 
-      this.nodeModified = false;
-      this.positionsChanged = false;
-      this.edgeFieldModifications = [];
+      this.modified = false;
     });
 
     effect(() => {
@@ -111,12 +106,12 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
       untracked(() => this.fields.set(fields()));
     });
 
-    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => (this.nodeModified = true));
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => (this.modified = true));
   }
 
   orderChanged(fields: ResolvedField[]): void {
     this.fields.set(fields);
-    this.positionsChanged = true;
+    this.modified = true;
   }
 
   addDirectField(): void {
@@ -133,7 +128,7 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
         const position = this.nextFieldPosition();
         const newField = { ...field, fieldId: null, position };
         this.fields.update(fields => [...fields, { source: 'direct', field: newField, position }]);
-        this.nodeModified = true;
+        this.modified = true;
       });
   }
 
@@ -154,7 +149,7 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
           return result;
         });
 
-        this.nodeModified = true;
+        this.modified = true;
       });
   }
 
@@ -172,11 +167,11 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
           return result;
         });
 
-        this.nodeModified = true;
+        this.modified = true;
       });
   }
 
-  editEdgeField({ index, field, edge }: EdgeFieldReference): void {
+  editEdgeField({ index, field }: EdgeFieldReference): void {
     const existingNames = this.getExistingFieldNames(field.name);
 
     this.modelDialogService
@@ -193,11 +188,7 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
           return result;
         });
 
-        const modificationsWithoutCurrentField = this.edgeFieldModifications.filter(
-          m => m.edge.edgeId !== edge.edgeId || m.field.referencedFieldId !== field.referencedFieldId
-        );
-
-        this.edgeFieldModifications = [...modificationsWithoutCurrentField, { edge, field: updated }];
+        this.modified = true;
       });
   }
 
@@ -206,7 +197,7 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
   }
 
   save(): Observable<DataModelModification> | null {
-    if (!this.nodeModified && !this.positionsChanged && !this.edgeFieldModifications.length && this.pendingSaveId() !== null) {
+    if (!this.modified || this.pendingSaveId() !== null) {
       return null;
     }
 
@@ -215,56 +206,25 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
       return null;
     }
 
-    const saveNode$ = this.nodeModified
-      ? this.saveNodePropertiesWithoutOrder()
-      : of({ updatedNodes: [this.node()], updatedEdges: [], deletedNodeIds: [], deletedEdgeIds: [], visuallyStaleNodeIds: [] } satisfies DataModelModification);
+    const { name } = this.form.getRawValue();
+    const fields: DataModelField[] = [];
+    const edgeFields: DataModelEdgeFieldEdit[] = [];
 
-    const allFields = this.fields();
-    const positionsChanged = this.positionsChanged;
-    const edgeFieldModifications = this.edgeFieldModifications;
-    this.pendingSaveId.set(this.nodeId());
+    this.fields().forEach((resolved, position) => {
+      if (resolved.source === 'direct') {
+        fields.push({ ...resolved.field, position });
+      } else {
+        edgeFields.push({ fieldId: resolved.field.fieldId, name: resolved.field.name, position });
+      }
+    });
 
-    return saveNode$.pipe(
-      tap(() => (this.nodeModified = false)),
-      mergeMap(modification => {
-        if (!edgeFieldModifications.length) {
-          return of(modification);
-        }
+    const nodeId = this.nodeId();
+    this.pendingSaveId.set(nodeId);
 
-        const updatedEdges = applyEdgeFieldModifications(edgeFieldModifications);
-        return from(updatedEdges).pipe(
-          concatMap(edge => this.store.updateEdge(edge)),
-          reduce((acc, mod) => mergeDataModelModification(acc, mod), modification),
-          tap(() => (this.edgeFieldModifications = [])),
-        );
-      }),
-      mergeMap(modification => {
-        if (!positionsChanged) {
-          return of(modification);
-        }
-
-        const savedNode = modification.updatedNodes.find(node => node.nodeId === this.pendingSaveId()) as DataModelNode;
-        return this.fieldResolver.reorderFields(this.nodeId(), this.updateIdsForNewDirectFields(savedNode, allFields)).pipe(
-          map(mod => mergeDataModelModification(modification, mod)),
-        );
-      }),
-      tap(() => (this.positionsChanged = false)),
+    return this.store.updateNodeDefinition({ nodeId, name, fields, edgeFields }).pipe(
+      tap(() => this.modified = false),
       finalize(() => this.pendingSaveId.set(null)),
     );
-  }
-
-  private saveNodePropertiesWithoutOrder(): Observable<DataModelModification> {
-    const { name } = this.form.getRawValue();
-    const fields = this.getDirectFields();
-    const nodeId = this.nodeId();
-
-    return this.store.updateNode({ nodeId, name, fields });
-  }
-
-  private getDirectFields(): DataModelField[] {
-    return this.fields()
-      .filter(f => f.source === 'direct')
-      .map(f => f.field as DataModelField);
   }
 
   private nextFieldPosition(): number {
@@ -277,20 +237,5 @@ export class DataModelNodeEditorComponent implements DataModelEditor {
     return excludeName !== undefined
       ? names.filter(n => n !== excludeName)
       : names;
-  }
-
-  private updateIdsForNewDirectFields(node: DataModelNode, allFields: ResolvedField[]): ResolvedField[] {
-    const fieldNameToFieldMapping: Record<string, DataModelField> = Object.fromEntries(
-      node.fields.map(field => [field.name, field]),
-    );
-
-    return allFields.map(resolvedField => {
-      if (resolvedField.source === 'edge' || resolvedField.field.fieldId !== null) {
-        return resolvedField;
-      }
-
-      const { fieldId } = fieldNameToFieldMapping[resolvedField.field.name];
-      return { ...resolvedField, field: { ...resolvedField.field, fieldId, position: resolvedField.position } };
-    });
   }
 }

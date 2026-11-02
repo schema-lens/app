@@ -22,7 +22,12 @@ export interface DataModelFieldDataTypeParameter {
   value: string | null;
 }
 
-export interface DataModelFieldReorderRequest {
-  directFields: { fieldId: number; position: number }[];
-  edgeFields: { edgeId: number; referencedFieldId: number; position: number }[];
+export interface DataModelNodeDefinitionUpdate extends DataModelNode {
+  edgeFields?: DataModelEdgeFieldEdit[];
+}
+
+export interface DataModelEdgeFieldEdit {
+  fieldId: number;
+  name: string;
+  position: number;
 }

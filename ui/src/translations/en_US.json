@@ -414,7 +414,6 @@
       "TYPE_ONE_TO_MANY": "1:N (One to Many)",
       "IDENTIFYING_LABEL": "Identifying",
       "IDENTIFYING_CYCLE_TOOLTIP": "Cannot mark this edge as identifying because it would create a cycle in identifying relationships.",
-      "IDENTIFYING_DUPLICATE_TOOLTIP": "Cannot mark this edge as identifying because an identifying edge already exists between these nodes. This is a limitation of the modeler that will be addressed in the future.",
       "MANDATORY_LABEL": "Mandatory",
       "DELETE_TITLE": "Delete Relationship",
       "DELETE_DESCRIPTION": "Are you sure you want to delete this relationship? It will also remove all of its fields that are inherited by {layer, select, logical {entities} other {tables}}."
