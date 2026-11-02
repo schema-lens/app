@@ -1,5 +1,6 @@
 package dev.zemco.schemalens.modeling.edges
 
+import dev.zemco.schemalens.modeling.fields.DataModelEdgeReferencedFieldsImmutableException
 import dev.zemco.schemalens.modeling.models.DataModel
 import dev.zemco.schemalens.modeling.models.DataModelModificationDto
 import dev.zemco.schemalens.validation.OnCreate

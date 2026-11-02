@@ -4,7 +4,6 @@ import dev.zemco.schemalens.ResourceNotFoundException
 import dev.zemco.schemalens.auth.User
 import dev.zemco.schemalens.modeling.diagrams.DataModelDiagram
 import dev.zemco.schemalens.modeling.edges.DataModelEdge
-import dev.zemco.schemalens.modeling.nodes.DataModelField
 import dev.zemco.schemalens.modeling.nodes.DataModelNode
 import dev.zemco.schemalens.modeling.types.DataModelDataType
 import jakarta.persistence.CascadeType
@@ -59,20 +58,6 @@ class DataModel(
     fun findNode(nodeId: Long): DataModelNode =
         findNodeOrNull(nodeId) ?: throw ResourceNotFoundException.withId("Node", nodeId)
 
-    fun findFieldOrNull(fieldId: Long): DataModelField? =
-        nodes.asSequence()
-            .flatMap { it.fields.asSequence() }
-            .firstOrNull { it.id == fieldId }
-
-    fun findField(fieldId: Long): DataModelField =
-        findFieldOrNull(fieldId) ?: throw ResourceNotFoundException.withId("Field", fieldId)
-
-    fun findFieldOrNull(nodeId: Long, fieldId: Long): DataModelField? =
-        findNodeOrNull(nodeId)?.fields?.firstOrNull { it.id == fieldId }
-
-    fun findField(nodeId: Long, fieldId: Long): DataModelField =
-        findFieldOrNull(nodeId, fieldId) ?: throw ResourceNotFoundException.withId("Field", fieldId)
-
     fun findEdgeOrNull(edgeId: Long): DataModelEdge? =
         edges.firstOrNull { it.id == edgeId }
 
@@ -90,7 +75,4 @@ class DataModel(
 
     fun findDataTypeByNameOrNull(name: String): DataModelDataType? =
         dataTypes.firstOrNull { it.name.equals(name, ignoreCase = true) }
-
-    fun findDataTypeByName(name: String): DataModelDataType =
-        findDataTypeByNameOrNull(name) ?: throw ResourceNotFoundException.withIdentifier("Data type", "name", name)
 }

@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { Observable, tap, of, finalize, defer, map } from 'rxjs';
 import { DataModel, DataModelDetails, DataModelModification } from './models/data-model.model';
 import { DataModelEdge } from './models/data-model-edge.model';
-import { DataModelFieldReorderRequest, DataModelNode, DataModelNodeSummary } from './models/data-model-node.model';
+import { DataModelNodeSummary, DataModelNodeDefinitionUpdate } from './models/data-model-node.model';
 import { DataModelDataType } from './models/data-model-data-type.model';
 import { DataModelDiagram } from './models/data-model-diagram.model';
 import { DataModelDetailsService } from './services/data-model-details.service';
@@ -89,8 +89,8 @@ export class DataModelStore {
      );
    }
 
-  updateNode(node: DataModelNode): Observable<DataModelModification> {
-    return this.nodeService.updateNode(this.dataModelId, node).pipe(
+  updateNodeDefinition(node: DataModelNodeDefinitionUpdate): Observable<DataModelModification> {
+    return this.nodeService.updateNodeDefinition(this.dataModelId, node).pipe(
       tap(modification => this.mergeModification(modification)),
     );
   }
@@ -169,12 +169,6 @@ export class DataModelStore {
           diagrams: m.diagrams.filter(d => d.id !== diagramId),
         }),
       ),
-    );
-  }
-
-  reorderFields(nodeId: number, request: DataModelFieldReorderRequest): Observable<DataModelModification> {
-    return this.nodeService.reorderNodeFields(this.dataModelId, nodeId, request).pipe(
-      tap(modification => this.mergeModification(modification)),
     );
   }
 

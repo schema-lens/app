@@ -2,11 +2,11 @@ package dev.zemco.schemalens
 
 import dev.zemco.schemalens.auth.ResourceAccessDeniedException
 import dev.zemco.schemalens.backup.BackupAlreadyRunningException
-import dev.zemco.schemalens.modeling.edges.DataModelEdgeDuplicateIdentifyingException
 import dev.zemco.schemalens.modeling.edges.DataModelEdgeIdentifyingCycleException
-import dev.zemco.schemalens.modeling.nodes.FieldDataTypeParameterExistsException
-import dev.zemco.schemalens.modeling.nodes.FieldDataTypeParameterUnknownException
-import dev.zemco.schemalens.modeling.nodes.FieldNameNotUniqueException
+import dev.zemco.schemalens.modeling.fields.FieldDataTypeParameterExistsException
+import dev.zemco.schemalens.modeling.fields.FieldDataTypeParameterUnknownException
+import dev.zemco.schemalens.modeling.fields.FieldNameInvalidException
+import dev.zemco.schemalens.modeling.fields.FieldNameNotUniqueException
 import dev.zemco.schemalens.modeling.nodes.NodeExistsException
 import dev.zemco.schemalens.modeling.types.DataTypeExistsException
 import dev.zemco.schemalens.modeling.types.DataTypeInUseException
@@ -31,6 +31,10 @@ class GlobalControllerAdvice {
     fun handleNotFoundException(ex: ResourceNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.message)
 
+    @ExceptionHandler(FieldNameInvalidException::class)
+    fun handleInvalidFieldNameException(ex: FieldNameInvalidException) =
+        ResponseEntity.badRequest().body(ex.message)
+
     @ExceptionHandler(
         DataTypeInUseException::class,
         DataTypeExistsException::class,
@@ -40,7 +44,6 @@ class GlobalControllerAdvice {
         FieldNameNotUniqueException::class,
         FieldDataTypeParameterExistsException::class,
         FieldDataTypeParameterUnknownException::class,
-        DataModelEdgeDuplicateIdentifyingException::class,
         DataModelEdgeIdentifyingCycleException::class,
         BackupAlreadyRunningException::class,
     )

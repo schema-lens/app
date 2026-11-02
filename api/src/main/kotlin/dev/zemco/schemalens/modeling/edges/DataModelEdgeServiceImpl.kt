@@ -1,5 +1,7 @@
 package dev.zemco.schemalens.modeling.edges
 
+import dev.zemco.schemalens.modeling.fields.DataModelEdgeReferencedFieldsImmutableException
+import dev.zemco.schemalens.modeling.fields.validateFieldNames
 import dev.zemco.schemalens.modeling.models.DataModel
 import dev.zemco.schemalens.modeling.models.DataModelCascadeService
 import dev.zemco.schemalens.modeling.models.DataModelEdgeCascadeMutationService
@@ -21,7 +23,6 @@ class DataModelEdgeServiceImpl(
         val toNode = model.findNode(dto.toNodeId)
 
         if (dto.isIdentifying) {
-            checkNoDuplicateIdentifyingEdge(model, fromNode.id!!, toNode.id!!)
             cascadeService.checkNoIdentifyingCycle(model, fromNode.id!!, toNode.id!!, excludeEdgeId = null)
         }
 
@@ -38,6 +39,7 @@ class DataModelEdgeServiceImpl(
         )
 
         val saved = edgeRepository.save(edge)
+        model.edges.add(saved)
 
         return persistUpdatedEdges(
             model = model,
@@ -53,39 +55,50 @@ class DataModelEdgeServiceImpl(
         val wasIdentifying = edge.isIdentifying
 
         val requestedFields = dto.fields.orEmpty()
-        val existingFieldIds = edge.fields.map { it.id.referencedFieldId }.toSet()
-        val requestedFieldIds = requestedFields.map { it.referencedFieldId }.toSet()
+        val existingFieldsById = edge.fields.associateBy { it.id!! }
+        val requestedFieldIds = requestedFields.map { it.fieldId }.toSet()
 
-        if (existingFieldIds != requestedFieldIds) {
+        if (requestedFieldIds.size != requestedFields.size || existingFieldsById.keys != requestedFieldIds) {
             throw DataModelEdgeReferencedFieldsImmutableException(edgeId)
         }
 
         if (dto.isIdentifying && !wasIdentifying) {
-            checkNoDuplicateIdentifyingEdge(model, edge.fromNodeId, edge.toNodeId)
             cascadeService.checkNoIdentifyingCycle(model, edge.fromNodeId, edge.toNodeId, excludeEdgeId = edge.id)
         }
+
+        requestedFields.forEach { field ->
+            val existingField = existingFieldsById.getValue(field.fieldId)
+            if (existingField.sourceNodeField.id != field.sourceNodeFieldId ||
+                existingField.parentField.id != field.parentFieldId
+            ) {
+                throw DataModelEdgeReferencedFieldsImmutableException(edgeId)
+            }
+        }
+
+        val requestedNames = requestedFields.associate { it.fieldId to it.name.trim() }
+        val otherFieldNames = edge.toNode.fields.map { it.name } +
+            model.edges
+                .filter { it.toNodeId == edge.toNodeId && it.id != edgeId }
+                .flatMap { incoming -> incoming.fields.map { it.name } }
+
+        validateFieldNames(otherFieldNames + requestedNames.values)
 
         edge.apply {
             type = dto.type
             isMandatory = dto.isMandatory
             isIdentifying = dto.isIdentifying
         }
-
-        val existingFieldsByReferencedFieldId = edge.fields.associateBy { it.id.referencedFieldId }
-
         requestedFields.forEach { field ->
-            val referencedField = existingFieldsByReferencedFieldId[field.referencedFieldId]!!
-            referencedField.name = field.name
-            referencedField.position = field.position
+            val existingField = existingFieldsById.getValue(field.fieldId)
+            existingField.name = requestedNames.getValue(field.fieldId)
+            existingField.position = field.position
         }
-
-        val saved = edgeRepository.save(edge)
 
         return persistUpdatedEdges(
             model = model,
-            edge = saved,
+            edge = edge,
             syncEdgeFields = false,
-            syncCascade = wasIdentifying != saved.isIdentifying,
+            syncCascade = wasIdentifying != edge.isIdentifying,
         )
     }
 
@@ -128,9 +141,8 @@ class DataModelEdgeServiceImpl(
         }
 
         if (!syncCascade) {
-            val persistedEdge = if (syncEdgeFields) edgeRepository.save(edge) else edge
             return DataModelModificationDto(
-                updatedEdges = listOf(DataModelEdgeDto.from(persistedEdge)),
+                updatedEdges = edgeWriteService.persistAndMapEdges(listOf(edge)),
                 visuallyStaleNodeIds = listOf(edge.toNodeId),
             )
         }
@@ -148,13 +160,5 @@ class DataModelEdgeServiceImpl(
             updatedEdges = updatedEdges,
             visuallyStaleNodeIds = visuallyStaleNodeIds,
         )
-    }
-
-    private fun checkNoDuplicateIdentifyingEdge(model: DataModel, fromNodeId: Long, toNodeId: Long) {
-        val hasDuplicate = model.edges.any { it.isIdentifying && it.fromNodeId == fromNodeId && it.toNodeId == toNodeId }
-
-        if (hasDuplicate) {
-            throw DataModelEdgeDuplicateIdentifyingException(fromNodeId, toNodeId)
-        }
     }
 }

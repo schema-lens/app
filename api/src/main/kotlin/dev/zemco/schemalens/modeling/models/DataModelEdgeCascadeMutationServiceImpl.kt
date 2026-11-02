@@ -17,6 +17,6 @@ class DataModelEdgeCascadeMutationServiceImpl(
 
     override fun collectCascadeEdgesAndSync(model: DataModel, fromNodes: Collection<DataModelNode>): List<DataModelEdge> =
         cascadeService.edgesInCascadeScope(fromNodes).also { scopedEdges ->
-            scopedEdges.forEach { cascadeService.syncReferencedFieldsFromPrimaryKey(model, it) }
+            cascadeService.syncReferencedFieldsFromPrimaryKey(model, scopedEdges)
         }
 }

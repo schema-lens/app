@@ -1,6 +1,10 @@
 ﻿import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { DataModelFieldReorderRequest, DataModelNode, DataModelNodeSummary } from '../models/data-model-node.model';
+import {
+  DataModelNode,
+  DataModelNodeSummary,
+  DataModelNodeDefinitionUpdate,
+} from '../models/data-model-node.model';
 import { DataModelModification } from '../models/data-model.model';
 import { DataModelNodeHttpClientService } from './data-model-node-http-client.service';
 
@@ -14,15 +18,11 @@ export class DataModelNodeService {
     return this.httpClient.createNode(modelId, node);
   }
 
-  updateNode(modelId: number, node: DataModelNode): Observable<DataModelModification> {
-    return this.httpClient.updateNode(modelId, node);
+  updateNodeDefinition(modelId: number, node: DataModelNodeDefinitionUpdate): Observable<DataModelModification> {
+    return this.httpClient.updateNodeDefinition(modelId, node);
   }
 
   deleteNode(modelId: number, nodeId: number): Observable<DataModelModification> {
     return this.httpClient.deleteNode(modelId, nodeId);
-  }
-
-  reorderNodeFields(modelId: number, nodeId: number, request: DataModelFieldReorderRequest): Observable<DataModelModification> {
-    return this.httpClient.reorderNodeFields(modelId, nodeId, request);
   }
 }

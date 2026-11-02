@@ -1,14 +1,13 @@
-package dev.zemco.schemalens.modeling.nodes
+package dev.zemco.schemalens.modeling.fields
 
 import dev.zemco.schemalens.modeling.types.DataModelDataType
-import dev.zemco.schemalens.modeling.types.DataModelFieldDataTypeParameter
 import org.springframework.stereotype.Service
 
 @Service
 class DataModelFieldDataTypeParameterServiceImpl : DataModelFieldDataTypeParameterService {
 
     override fun syncParameters(
-        field: DataModelField,
+        field: DataModelNodeField,
         dataType: DataModelDataType,
         requestedParameters: List<DataModelFieldDataTypeParameterInputDto>?,
         clearWhenAbsent: Boolean,

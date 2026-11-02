@@ -39,8 +39,7 @@
     </mat-select>
   </mat-form-field>
 
-  @let identifyingTooltipKey = 'DATA_MODEL.EDGE.' + (hasDuplicateIdentifyingEdge() ? 'IDENTIFYING_DUPLICATE_TOOLTIP' : 'IDENTIFYING_CYCLE_TOOLTIP');
-  <span [matTooltip]="(identifyingTooltipKey | translate)()" [matTooltipDisabled]="!cannotEnableIdentifying()">
+  <span [matTooltip]="('DATA_MODEL.EDGE.IDENTIFYING_CYCLE_TOOLTIP' | translate)()" [matTooltipDisabled]="!cannotEnableIdentifying()">
     <mat-checkbox formControlName="isIdentifying">{{ ('DATA_MODEL.EDGE.IDENTIFYING_LABEL' | translate)() }}</mat-checkbox>
   </span>
   <mat-checkbox formControlName="isMandatory">{{ ('DATA_MODEL.EDGE.MANDATORY_LABEL' | translate)() }}</mat-checkbox>

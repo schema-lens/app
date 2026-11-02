@@ -1616,4 +1616,240 @@
       </sql>
     </rollback>
   </changeSet>
+
+  <changeSet id="2026-10-31T1500-drop-legacy-data-model-field-tables"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <dropTable tableName="data_model_field_data_type_parameter" />
+    <dropTable tableName="data_model_edge_field" />
+    <dropTable tableName="data_model_field" />
+  </changeSet>
+
+  <changeSet id="2026-10-31T1501-add-shared-data-model-field-table"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createTable tableName="data_model_field">
+      <column name="field_id"
+              type="BIGINT"
+              autoIncrement="true">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_field" />
+      </column>
+
+      <column name="node_id"
+              type="BIGINT">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="kind"
+              type="VARCHAR(1)">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="name"
+              type="VARCHAR(30)">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="position"
+              type="SMALLINT">
+        <constraints nullable="false" />
+      </column>
+    </createTable>
+
+    <rollback>
+      <dropTable tableName="data_model_field" />
+    </rollback>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1502-add-data-model-node-field-table"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createTable tableName="data_model_node_field">
+      <column name="field_id"
+              type="BIGINT">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_node_field" />
+      </column>
+
+      <column name="type_id"
+              type="BIGINT">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="is_primary_key"
+              type="NUMBER(1,0)">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="is_nullable"
+              type="NUMBER(1,0)">
+        <constraints nullable="false" />
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1503-add-shared-data-model-edge-field-table"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createTable tableName="data_model_edge_field">
+      <column name="field_id"
+              type="BIGINT">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_edge_field" />
+      </column>
+
+      <column name="edge_id"
+              type="BIGINT">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="source_node_field_id"
+              type="BIGINT">
+        <constraints nullable="false" />
+      </column>
+
+      <column name="parent_field_id"
+              type="BIGINT">
+        <constraints nullable="false" />
+      </column>
+    </createTable>
+
+    <addUniqueConstraint tableName="data_model_edge_field"
+                         columnNames="edge_id, parent_field_id"
+                         constraintName="uc_data_model_edge_field_per_edge_parent" />
+
+    <createIndex tableName="data_model_edge_field"
+                 indexName="idx_data_model_edge_field_on_source_node_field_id">
+      <column name="source_node_field_id" />
+    </createIndex>
+
+    <createIndex tableName="data_model_edge_field"
+                 indexName="idx_data_model_edge_field_on_parent_field_id">
+      <column name="parent_field_id" />
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1504-add-shared-data-model-field-data-type-parameter-table"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <createTable tableName="data_model_field_data_type_parameter">
+      <column name="field_id"
+              type="BIGINT">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_field_data_type_parameter" />
+      </column>
+
+      <column name="type_id"
+              type="BIGINT">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_field_data_type_parameter" />
+      </column>
+
+      <column name="name"
+              type="VARCHAR(38)">
+        <constraints nullable="false"
+                     primaryKey="true"
+                     primaryKeyName="pk_data_model_field_data_type_parameter" />
+      </column>
+
+      <column name="value"
+              type="VARCHAR(256)" />
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2026-10-31T1505-data-model-field-references"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <addForeignKeyConstraint baseTableName="data_model_field"
+                             baseColumnNames="node_id"
+                             constraintName="fk_data_model_field_on_node_id"
+                             referencedTableName="data_model_node"
+                             referencedColumnNames="node_id"
+                             onDelete="CASCADE"
+                             deferrable="true"
+                             initiallyDeferred="true" />
+
+    <addForeignKeyConstraint baseTableName="data_model_node_field"
+                             baseColumnNames="field_id"
+                             constraintName="fk_data_model_node_field_on_field"
+                             referencedTableName="data_model_field"
+                             referencedColumnNames="field_id"
+                             onDelete="CASCADE" />
+
+    <addForeignKeyConstraint baseTableName="data_model_node_field"
+                             baseColumnNames="type_id"
+                             constraintName="fk_data_model_node_field_on_type_id"
+                             referencedTableName="data_model_data_type"
+                             referencedColumnNames="type_id" />
+
+    <addForeignKeyConstraint baseTableName="data_model_edge_field"
+                             baseColumnNames="field_id"
+                             constraintName="fk_data_model_edge_field_on_field"
+                             referencedTableName="data_model_field"
+                             referencedColumnNames="field_id"
+                             onDelete="CASCADE" />
+
+    <addForeignKeyConstraint baseTableName="data_model_edge_field"
+                             baseColumnNames="edge_id"
+                             constraintName="fk_data_model_edge_field_on_edge_id"
+                             referencedTableName="data_model_edge"
+                             referencedColumnNames="edge_id"
+                             deferrable="true"
+                             initiallyDeferred="true" />
+
+    <addForeignKeyConstraint baseTableName="data_model_edge_field"
+                             baseColumnNames="source_node_field_id"
+                             constraintName="fk_data_model_edge_field_on_source_node_field_id"
+                             referencedTableName="data_model_node_field"
+                             referencedColumnNames="field_id"
+                             deferrable="true"
+                             initiallyDeferred="true" />
+
+    <addForeignKeyConstraint baseTableName="data_model_edge_field"
+                             baseColumnNames="parent_field_id"
+                             constraintName="fk_data_model_edge_field_on_parent_field_id"
+                             referencedTableName="data_model_field"
+                             referencedColumnNames="field_id"
+                             deferrable="true"
+                             initiallyDeferred="true" />
+
+    <addForeignKeyConstraint baseTableName="data_model_field_data_type_parameter"
+                             baseColumnNames="field_id"
+                             constraintName="fk_data_model_field_data_type_parameter_on_field_id"
+                             referencedTableName="data_model_node_field"
+                             referencedColumnNames="field_id"
+                             onDelete="CASCADE" />
+
+    <addForeignKeyConstraint baseTableName="data_model_field_data_type_parameter"
+                             baseColumnNames="type_id, name"
+                             constraintName="fk_data_model_field_data_type_parameter_on_parameter"
+                             referencedTableName="data_model_data_type_parameter"
+                             referencedColumnNames="type_id, name"
+                             onDelete="CASCADE" />
+  </changeSet>
+
+  <changeSet id="2026-10-31T1506-data-model-field-checks"
+             author="Erik Zemčík (zemcik.erik@gmail.com)">
+    <sql dbms="oracle" splitStatements="false">
+      ALTER TABLE data_model_field
+      ADD CONSTRAINT cc_data_model_field_kind CHECK (kind IN ('N', 'E'))
+    </sql>
+
+    <sql dbms="oracle" splitStatements="false">
+      ALTER TABLE data_model_node_field
+      ADD CONSTRAINT cc_data_model_node_field_not_null_primary_key CHECK (is_primary_key = 0 OR is_nullable = 0)
+    </sql>
+
+    <rollback>
+      <sql dbms="oracle" splitStatements="false">
+        ALTER TABLE data_model_node_field
+        DROP CONSTRAINT cc_data_model_node_field_not_null_primary_key
+      </sql>
+
+      <sql dbms="oracle" splitStatements="false">
+        ALTER TABLE data_model_field
+        DROP CONSTRAINT cc_data_model_field_kind
+      </sql>
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

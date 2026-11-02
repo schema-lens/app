@@ -1,9 +1,7 @@
 ﻿import { computed, inject, Injectable, Signal } from '@angular/core';
-import { Observable } from 'rxjs';
 import { DataModelStore } from '../data-model.store';
 import { DirectResolvedField, EdgeResolvedField, ResolvedField } from '../models/resolved-field.model';
-import { DataModelField, DataModelFieldReorderRequest } from '../models/data-model-node.model';
-import { DataModelModification } from '../models/data-model.model';
+import { DataModelField } from '../models/data-model-node.model';
 
 @Injectable({ providedIn: 'root' })
 export class DataModelNodeFieldResolver {
@@ -31,7 +29,7 @@ export class DataModelNodeFieldResolver {
             source: 'edge' as const,
             field: field,
             edge: e,
-            referencedField: allFields.find(f => f.fieldId === field.referencedFieldId) as DataModelField,
+            referencedField: allFields.find(f => f.fieldId === field.sourceNodeFieldId) as DataModelField,
             position: field.position,
           }));
         });
@@ -44,34 +42,10 @@ export class DataModelNodeFieldResolver {
           return a.source === 'direct' ? -1 : 1;
         }
 
-        const idA = a.source === 'direct' ? (a.field.fieldId ?? 0) : a.field.referencedFieldId;
-        const idB = b.source === 'direct' ? (b.field.fieldId ?? 0) : b.field.referencedFieldId;
+        const idA = a.field.fieldId ?? 0;
+        const idB = b.field.fieldId ?? 0;
         return idA - idB;
       });
     });
-  }
-
-  reorderFields(nodeId: number, orderedFields: ResolvedField[]): Observable<DataModelModification> {
-    const request: DataModelFieldReorderRequest = {
-      directFields: [],
-      edgeFields: [],
-    };
-
-    orderedFields.forEach((resolved, index) => {
-      if (resolved.source === 'direct') {
-        request.directFields.push({
-          fieldId: resolved.field.fieldId as number,
-          position: index,
-        });
-      } else {
-        request.edgeFields.push({
-          edgeId: resolved.edge.edgeId as number,
-          referencedFieldId: resolved.field.referencedFieldId,
-          position: index,
-        });
-      }
-    });
-
-    return this.store.reorderFields(nodeId, request);
   }
 }

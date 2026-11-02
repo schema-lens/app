@@ -1,13 +1,15 @@
 package dev.zemco.schemalens.modeling.models
 
+import dev.zemco.schemalens.ResourceNotFoundException
 import dev.zemco.schemalens.modeling.edges.DataModelEdge
-import dev.zemco.schemalens.modeling.edges.DataModelEdgeField
 import dev.zemco.schemalens.modeling.edges.DataModelEdgeIdentifyingCycleException
-import dev.zemco.schemalens.modeling.nodes.DataModelField
+import dev.zemco.schemalens.modeling.fields.DataModelEdgeField
+import dev.zemco.schemalens.modeling.fields.DataModelField
+import dev.zemco.schemalens.modeling.fields.DataModelNodeField
 import dev.zemco.schemalens.modeling.nodes.DataModelNode
+import java.util.PriorityQueue
+import java.util.TreeMap
 import org.springframework.stereotype.Service
-import kotlin.sequences.plus
-import kotlin.sequences.sortedBy
 
 @Service
 class DataModelCascadeServiceImpl : DataModelCascadeService {
@@ -47,7 +49,45 @@ class DataModelCascadeServiceImpl : DataModelCascadeService {
             }
         }
 
-        return result
+        return orderEdgesByIdentifyingDependencies(result, visitedNodeIds)
+    }
+
+    private fun orderEdgesByIdentifyingDependencies(
+        edges: List<DataModelEdge>,
+        nodeIds: Set<Long>,
+    ): List<DataModelEdge> {
+        val outgoingEdgesByFromNodeId = edges.groupBy { it.fromNodeId }
+        val incomingIdentifyingCounts = nodeIds.associateWith { 0 }.toMutableMap()
+
+        edges.asSequence().filter { it.isIdentifying }.forEach { edge ->
+            incomingIdentifyingCounts[edge.toNodeId] = incomingIdentifyingCounts.getValue(edge.toNodeId) + 1
+        }
+
+        val readyNodeIds = PriorityQueue(incomingIdentifyingCounts.filterValues { it == 0 }.keys)
+        val orderedEdges = mutableListOf<DataModelEdge>()
+        var processedNodeCount = 0
+
+        while (readyNodeIds.isNotEmpty()) {
+            val nodeId = readyNodeIds.remove()
+            processedNodeCount++
+
+            for (edge in outgoingEdgesByFromNodeId[nodeId].orEmpty().sortedBy { it.id }) {
+                orderedEdges.add(edge)
+                if (edge.isIdentifying) {
+                    val remaining = incomingIdentifyingCounts.getValue(edge.toNodeId) - 1
+                    incomingIdentifyingCounts[edge.toNodeId] = remaining
+                    if (remaining == 0) {
+                        readyNodeIds.add(edge.toNodeId)
+                    }
+                }
+            }
+        }
+
+        if (processedNodeCount != nodeIds.size) {
+            throw DataModelEdgeIdentifyingCycleException()
+        }
+
+        return orderedEdges
     }
 
     override fun checkNoIdentifyingCycle(
@@ -84,96 +124,155 @@ class DataModelCascadeServiceImpl : DataModelCascadeService {
         }
     }
 
-    override fun syncReferencedFieldsFromPrimaryKey(model: DataModel, edge: DataModelEdge) {
-        val fromNode = model.findNode(edge.fromNodeId)
-        val toNode = model.findNode(edge.toNodeId)
+    override fun syncReferencedFieldsFromPrimaryKey(model: DataModel, edge: DataModelEdge) =
+        syncReferencedFieldsFromPrimaryKey(model, listOf(edge))
 
-        val primaryKeyFields = getSourcePrimaryKeyFields(model, fromNode)
-        val existingByReferencedFieldId = edge.fields.associateBy { it.id.referencedFieldId }.toMutableMap()
-        var nextPosition = getNextFieldPosition(model, toNode)
-        val occupiedNames = collectOccupiedFieldNames(model, toNode, edge)
-
-        primaryKeyFields.forEach { primaryKeyField ->
-            val referencedFieldId = primaryKeyField.id!!
-            val existingField = existingByReferencedFieldId[referencedFieldId]
-
-            if (existingField != null) {
-                existingByReferencedFieldId.remove(referencedFieldId)
-                return@forEach
-            }
-
-            val uniqueName = resolveUniqueFieldName(primaryKeyField.name, occupiedNames)
-            occupiedNames.add(uniqueName.uppercase())
-
-            edge.fields.add(DataModelEdgeField(
-                id = DataModelEdgeField.Id(
-                    edgeId = edge.id ?: 0,
-                    referencedFieldId = referencedFieldId,
-                ),
-                edge = edge,
-                referencedField = primaryKeyField,
-                name = uniqueName,
-                position = nextPosition++,
-            ))
+    override fun syncReferencedFieldsFromPrimaryKey(model: DataModel, edges: List<DataModelEdge>) {
+        if (edges.isEmpty()) {
+            return
         }
 
-        existingByReferencedFieldId.values.forEach { edge.fields.remove(it) }
+        val context = SynchronizationContext(model)
+        edges.forEach { syncReferencedFieldsFromPrimaryKey(model, it, context) }
     }
 
-    private fun collectOccupiedFieldNames(model: DataModel, node: DataModelNode, excludeEdge: DataModelEdge): MutableSet<String> {
-        val directNames = node.fields.asSequence().map { it.name }
+    private fun syncReferencedFieldsFromPrimaryKey(
+        model: DataModel,
+        edge: DataModelEdge,
+        context: SynchronizationContext,
+    ) {
+        val primaryKeyFields = context.primaryKeyFields(edge.fromNodeId)
+        val unmatchedFieldsByParent = edge.fields.associateBy { it.parentField.identity() }.toMutableMap()
+        val targetFields = context.targetFields(edge.toNodeId)
+        val indexedEdge = context.containsEdge(edge)
+        var nextPosition = targetFields.nextPosition()
 
-        val edgeNames = model.edges.asSequence()
-            .filter { it.toNodeId == node.id && it !== excludeEdge }
-            .flatMap { it.fields.asSequence() }
-            .map { it.name }
+        if (indexedEdge) {
+            edge.fields.forEach { targetFields.remove(it) }
+        }
 
-        return (directNames + edgeNames)
-            .map { it.uppercase() }
-            .toMutableSet()
+        primaryKeyFields.forEach { (parent, _) ->
+            unmatchedFieldsByParent[parent.identity()]?.let { targetFields.add(it) }
+        }
+
+        for ((parent, source) in primaryKeyFields) {
+            if (unmatchedFieldsByParent.remove(parent.identity()) != null) {
+                continue
+            }
+
+            require(parent.nodeId == edge.fromNodeId && source.node.modelId == model.id)
+
+            val uniqueName = resolveUniqueFieldName(parent.name, targetFields)
+            edge.fields.add(
+                DataModelEdgeField(
+                    edge = edge,
+                    sourceNodeField = source,
+                    parentField = parent,
+                    name = uniqueName,
+                    position = nextPosition++,
+                ).also { targetFields.add(it) }
+            )
+        }
+
+        edge.fields.removeAll(unmatchedFieldsByParent.values.toSet())
+        if (!indexedEdge) {
+            edge.fields.forEach { targetFields.remove(it) }
+        }
+        if (edge.isIdentifying) {
+            context.invalidatePrimaryKeyFields(edge.toNodeId)
+        }
     }
 
-    private fun resolveUniqueFieldName(baseName: String, occupiedNames: Set<String>): String {
-        val uppercaseBaseName = baseName.uppercase()
+    private fun DataModelField.identity(): Any = id ?: this
 
-        if (uppercaseBaseName !in occupiedNames) {
+    private fun resolveUniqueFieldName(baseName: String, targetFields: TargetFields): String {
+        if (!targetFields.containsName(baseName)) {
             return baseName
         }
 
         var suffix = 2
         while (true) {
-            val candidate = "${baseName}_$suffix"
-            val uppercaseCandidate = "${uppercaseBaseName}_$suffix"
+            val nameSuffix = "_$suffix"
+            val candidate = baseName.take(MAX_FIELD_NAME_LENGTH - nameSuffix.length) + nameSuffix
 
-            if (uppercaseCandidate !in occupiedNames) {
+            if (!targetFields.containsName(candidate)) {
                 return candidate
             }
             suffix++
         }
     }
 
-    private fun getSourcePrimaryKeyFields(model: DataModel, node: DataModelNode): Sequence<DataModelField> {
+    private fun getSourcePrimaryKeyFields(node: DataModelNode, incomingEdges: List<DataModelEdge>): List<SourcePrimaryKeyField> {
         val directPrimaryKeyFields = node.fields
             .asSequence()
             .filter { it.isPrimaryKey }
+            .map { SourcePrimaryKeyField(parent = it, source = it) }
 
-        val identifyingEdgesFields = model.edges
+        val identifyingEdgeFields = incomingEdges
             .asSequence()
-            .filter { it.toNodeId == node.id && it.isIdentifying }
+            .filter { it.isIdentifying }
             .flatMap { it.fields }
-            .map { it.referencedField }
+            .map { SourcePrimaryKeyField(parent = it, source = it.sourceNodeField) }
 
-        return (directPrimaryKeyFields + identifyingEdgesFields).sortedBy { it.position }
+        return (directPrimaryKeyFields + identifyingEdgeFields)
+            .sortedWith(compareBy({ it.parent.position }, { it.parent.id }))
+            .toList()
     }
 
-    private fun getNextFieldPosition(model: DataModel, node: DataModelNode): Short {
-        val directFieldPositions = node.fields.asSequence().map { it.position }
+    private inner class SynchronizationContext(model: DataModel) {
+        private val nodesById = model.nodes.associateBy { it.id }
+        private val indexedEdges = model.edges.toSet()
+        private val incomingEdgesByNodeId = indexedEdges.groupBy { it.toNodeId }
+        private val primaryKeyFieldsByNodeId = mutableMapOf<Long, List<SourcePrimaryKeyField>>()
+        private val targetFieldsByNodeId = mutableMapOf<Long, TargetFields>()
 
-        val edgeFieldPositions = model.edges.asSequence()
-            .filter { it.toNodeId == node.id }
-            .flatMap { it.fields.asSequence() }
-            .map { it.position }
+        private fun node(nodeId: Long): DataModelNode =
+            nodesById[nodeId] ?: throw ResourceNotFoundException.withId("Node", nodeId)
 
-        return (directFieldPositions + edgeFieldPositions).maxOrNull()?.plus(1)?.toShort() ?: 1
+        fun containsEdge(edge: DataModelEdge): Boolean = edge in indexedEdges
+
+        fun primaryKeyFields(nodeId: Long): List<SourcePrimaryKeyField> =
+            primaryKeyFieldsByNodeId.getOrPut(nodeId) {
+                getSourcePrimaryKeyFields(node(nodeId), incomingEdgesByNodeId[nodeId].orEmpty())
+            }
+
+        fun invalidatePrimaryKeyFields(nodeId: Long) {
+            primaryKeyFieldsByNodeId.remove(nodeId)
+        }
+
+        fun targetFields(nodeId: Long): TargetFields =
+            targetFieldsByNodeId.getOrPut(nodeId) {
+                TargetFields().also { fields ->
+                    node(nodeId).fields.forEach { fields.add(it) }
+                    incomingEdgesByNodeId[nodeId].orEmpty().forEach { edge ->
+                        edge.fields.forEach { fields.add(it) }
+                    }
+                }
+            }
+    }
+
+    private class TargetFields {
+        private val nameCounts = mutableMapOf<String, Int>()
+        private val positionCounts = TreeMap<Short, Int>()
+
+        fun containsName(name: String): Boolean = name.uppercase() in nameCounts
+
+        fun nextPosition(): Short = positionCounts.lastEntry()?.key?.plus(1)?.toShort() ?: 1
+
+        fun add(field: DataModelField) {
+            nameCounts.merge(field.name.uppercase(), 1, Int::plus)
+            positionCounts.merge(field.position, 1, Int::plus)
+        }
+
+        fun remove(field: DataModelField) {
+            nameCounts.computeIfPresent(field.name.uppercase()) { _, count -> (count - 1).takeIf { it > 0 } }
+            positionCounts.computeIfPresent(field.position) { _, count -> (count - 1).takeIf { it > 0 } }
+        }
+    }
+
+    private data class SourcePrimaryKeyField(val parent: DataModelField, val source: DataModelNodeField)
+
+    private companion object {
+        const val MAX_FIELD_NAME_LENGTH = 30
     }
 }
