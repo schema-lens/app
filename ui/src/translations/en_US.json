@@ -266,6 +266,19 @@
     }
   },
   "ADMIN": {
+    "USERS": {
+      "LABEL": "Users",
+      "ADD_LABEL": "Add User",
+      "EDIT_LABEL": "Edit User",
+      "EMPTY_LABEL": "No users found.",
+      "ACTIVE_LABEL": "Active",
+      "ADMIN_LABEL": "Administrator",
+      "PASSWORD_HINT": "Leave blank to keep the current password.",
+      "SELF_HINT": "You cannot deactivate your own account or remove your own administrator access.",
+      "CONFIRM_DELETE_TITLE": "Delete User",
+      "CONFIRM_DELETE_DESCRIPTION": "Are you sure you want to delete this user? Their projects, data models and collaboration access will also be removed. This cannot be undone.",
+      "CONFLICT_LABEL": "The username or email is already in use, or this change would remove your own administrator access."
+    },
     "DATA_TYPES": {
       "LABEL": "Default Data Types",
       "ADD_LABEL": "Add default data type",

@@ -12,7 +12,7 @@ data class UserDto(
 
 data class UserLoginDto(
     @field:NotNull
-    @field:Length(min = 4, max = 64)
+    @field:Length(min = 4, max = 32)
     @field:UsernameConstraint
     val username: String,
 
@@ -22,7 +22,7 @@ data class UserLoginDto(
 
 data class UserRegistrationDto(
     @field:NotNull
-    @field:Length(min = 4, max = 64)
+    @field:Length(min = 4, max = 32)
     @field:UsernameConstraint
     val username: String,
 

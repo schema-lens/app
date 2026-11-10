@@ -36,7 +36,7 @@ class UserServiceImpl(
     override fun loginUser(username: String, password: String): User? {
         val user = userRepository.findByUsernameIgnoreCase(username) ?: return null
 
-        if (!passwordEncoder.matches(password, user.password)) {
+        if (!user.active || !passwordEncoder.matches(password, user.password)) {
             throw WrongPasswordException()
         }
 

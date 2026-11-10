@@ -18,9 +18,9 @@ class User(
     var id: Long? = null,
 
     @NotBlank
-    @Length(min = 4, max = 64)
+    @Length(min = 4, max = 32)
     @UsernameConstraint
-    @Column(nullable = false, unique = true, length = 64)
+    @Column(nullable = false, unique = true, length = 32)
     var username: String,
 
     @Column(name = "hashed_password", nullable = false, length = 60)

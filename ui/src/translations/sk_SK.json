@@ -265,6 +265,19 @@
     }
   },
   "ADMIN": {
+    "USERS": {
+      "LABEL": "Používatelia",
+      "ADD_LABEL": "Pridať používateľa",
+      "EDIT_LABEL": "Upraviť používateľa",
+      "EMPTY_LABEL": "Neboli nájdení žiadni používatelia.",
+      "ACTIVE_LABEL": "Aktívny",
+      "ADMIN_LABEL": "Administrátor",
+      "PASSWORD_HINT": "Ak nechcete zmeniť heslo, nechajte pole prázdne.",
+      "SELF_HINT": "Nemôžete deaktivovať vlastný účet ani odobrať svoje administrátorské oprávnenia.",
+      "CONFIRM_DELETE_TITLE": "Odstrániť používateľa",
+      "CONFIRM_DELETE_DESCRIPTION": "Naozaj chcete odstrániť tohto používateľa? Odstránia sa aj jeho projekty, dátové modely a prístupy k spolupráci. Túto akciu nemožno vrátiť späť.",
+      "CONFLICT_LABEL": "Používateľské meno alebo e-mail sa už používa, alebo by táto zmena odobrala vaše administrátorské oprávnenia."
+    },
     "PANEL_LABEL": "Administračný panel",
     "ID_LABEL": "ID",
     "FAQ": {
