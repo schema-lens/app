@@ -26,7 +26,7 @@ class RefreshTokenServiceImpl(
     override fun useRefreshToken(token: String): User? {
         val entry = refreshTokenRepository.findByToken(token) ?: return null
 
-        if (Instant.now() > entry.expiresAt) {
+        if (!entry.user.active || Instant.now() > entry.expiresAt) {
             return null
         }
 

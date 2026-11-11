@@ -11,7 +11,7 @@ class UserDetailsServiceImpl(
 ) : UserDetailsService {
 
     override fun loadUserByUsername(username: String): UserDetails =
-        userService.getUserByUsername(username)?.let { UserWrapperDetails(it) }
+        userService.getUserByUsername(username)?.takeIf { it.active }?.let { UserWrapperDetails(it) }
             ?: throw UsernameNotFoundException("User with username '$username' not found")
 
 }

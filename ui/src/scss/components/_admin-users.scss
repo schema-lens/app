@@ -1,0 +1,83 @@
+@use '@angular/material' as mat;
+@use '../theme' as t;
+
+.admin-users {
+  &__table-container {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+
+    .mat-column-id,
+    .mat-column-expand {
+      width: 3rem;
+    }
+
+    .mat-column-expand {
+      text-align: center;
+
+      mat-icon {
+        transition: transform 225ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+    }
+  }
+
+  &__row {
+    &:hover {
+      background-color: mat.get-theme-color(t.$theme, surface-container-low);
+      cursor: pointer;
+    }
+
+    &.is-expanded .mat-column-expand mat-icon {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__detail-row {
+    display: none;
+    height: 0;
+
+    &.is-expanded {
+      display: table-row;
+    }
+  }
+
+  &__editor {
+    max-width: 48rem;
+    padding: 1rem 0;
+  }
+
+  &__editor-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    align-items: start;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+
+    mat-form-field {
+      min-width: 0;
+    }
+  }
+
+  &__account-options {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1.5rem;
+    row-gap: 0.5rem;
+  }
+
+  &__self-hint {
+    margin: 0.5rem 0 0;
+    color: mat.get-theme-color(t.$theme, on-surface-variant);
+    font: mat.get-theme-typography(t.$theme, body-small);
+  }
+
+  &__modify-dialog__form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 1rem;
+    padding: 0.5rem 0;
+  }
+}

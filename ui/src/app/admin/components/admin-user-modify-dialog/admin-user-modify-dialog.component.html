@@ -1,0 +1,39 @@
+<h2 mat-dialog-title>{{ ('ADMIN.USERS.ADD_LABEL' | translate)() }}</h2>
+
+<mat-dialog-content>
+  <form id="admin-user-form" class="admin-users__modify-dialog__form" [formGroup]="formGroup" (ngSubmit)="submit()">
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ ('AUTH.USERNAME_LABEL' | translate)() }}</mat-label>
+      <input matInput formControlName="username" type="text" autocomplete="off">
+      @if (formGroup.controls.username.invalid) {
+        <mat-error>{{ (formGroup.controls.username.errors | formatGenericValidationErrors)() }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ ('AUTH.EMAIL_LABEL' | translate)() }}</mat-label>
+      <input matInput formControlName="email" type="email" autocomplete="off">
+      @if (formGroup.controls.email.invalid) {
+        <mat-error>{{ (formGroup.controls.email.errors | formatGenericValidationErrors)() }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ ('AUTH.PASSWORD_LABEL' | translate)() }}</mat-label>
+      <input matInput formControlName="password" type="password" autocomplete="new-password">
+      @if (formGroup.controls.password.invalid) {
+        <mat-error>{{ (formGroup.controls.password.errors | formatGenericValidationErrors)() }}</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="admin-users__account-options">
+      <mat-checkbox formControlName="active">{{ ('ADMIN.USERS.ACTIVE_LABEL' | translate)() }}</mat-checkbox>
+      <mat-checkbox formControlName="admin">{{ ('ADMIN.USERS.ADMIN_LABEL' | translate)() }}</mat-checkbox>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button [mat-dialog-close]="null">{{ ('GENERIC.CANCEL_LABEL' | translate)() }}</button>
+  <button mat-flat-button type="submit" form="admin-user-form">{{ ('GENERIC.CONFIRM_LABEL' | translate)() }}</button>
+</mat-dialog-actions>

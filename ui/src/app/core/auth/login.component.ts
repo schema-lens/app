@@ -48,7 +48,7 @@ export class LoginComponent {
     username: new FormControl('', [
       Validators.required,
       Validators.minLength(4),
-      Validators.maxLength(64),
+      Validators.maxLength(32),
       Validators.pattern(USERNAME_REGEX),
     ]),
     password: new FormControl('', [Validators.required, Validators.minLength(8)]),

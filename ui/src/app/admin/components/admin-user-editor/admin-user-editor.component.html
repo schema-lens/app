@@ -1,0 +1,32 @@
+<div class="admin-users__editor" [formGroup]="formGroup">
+  <div class="admin-users__editor-fields">
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ ('AUTH.EMAIL_LABEL' | translate)() }}</mat-label>
+      <input matInput formControlName="email" type="email" autocomplete="off">
+      @if (formGroup.controls.email.invalid) {
+        <mat-error>{{ (formGroup.controls.email.errors | formatGenericValidationErrors)() }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ ('AUTH.NEW_PASSWORD_LABEL' | translate)() }}</mat-label>
+      <input matInput formControlName="password" type="password" autocomplete="new-password">
+      <mat-hint>{{ ('ADMIN.USERS.PASSWORD_HINT' | translate)() }}</mat-hint>
+      @if (formGroup.controls.password.invalid) {
+        <mat-error>{{ (formGroup.controls.password.errors | formatGenericValidationErrors)() }}</mat-error>
+      }
+    </mat-form-field>
+  </div>
+
+  <div class="admin-users__account-options">
+    <mat-checkbox formControlName="active">{{ ('ADMIN.USERS.ACTIVE_LABEL' | translate)() }}</mat-checkbox>
+    <mat-checkbox formControlName="admin">{{ ('ADMIN.USERS.ADMIN_LABEL' | translate)() }}</mat-checkbox>
+  </div>
+
+  @if (isCurrentUser()) {
+    <p class="admin-users__self-hint">{{ ('ADMIN.USERS.SELF_HINT' | translate)() }}</p>
+  }
+
+  <app-save-delete-control [saveDisabled]="saving()" [saveLoading]="saving()"
+    [deleteDisabled]="saving() || isCurrentUser()" (save)="submit()" (delete)="delete.emit()" />
+</div>

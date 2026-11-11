@@ -221,7 +221,11 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./admin/admin.component').then(c => c.AdminComponent),
     canActivate: [authGuard, hasAdminRoleGuard],
     children: [
-      { path: '', redirectTo: 'faq', pathMatch: 'full' },
+      { path: '', redirectTo: 'users', pathMatch: 'full' },
+      {
+        path: 'users',
+        loadComponent: () => import('./admin/components/admin-users/admin-users.component').then(c => c.AdminUsersComponent),
+      },
       {
         path: 'faq',
         loadComponent: () => import('./admin/components/admin-faq/admin-faq.component').then(c => c.AdminFaqComponent),
